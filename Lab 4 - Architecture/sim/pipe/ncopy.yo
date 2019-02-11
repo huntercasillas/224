@@ -1,0 +1,96 @@
+                            | #/* $begin ncopy-ys */
+                            | ##################################################################
+                            | # ncopy.ys - Copy a src block of len words to dst.
+                            | # Return the number of positive words (>0) contained in src.
+                            | #
+                            | # Hunter Casillas 
+                            | # NetID: casillas
+                            | #
+                            | # Describe how and why you modified the baseline code:
+                            | # 
+                            | # See comments directly after each instruction for full explanation...
+                            | # I implemented and used iaddq to decrease the amount of overall instructions.
+                            | # I added a loop unroller function, which unrolls by a factor of 4.
+                            | # I alternated registers to avoid data dependencies.
+                            | # I added 3 functions to handle extras after the loop unroller.
+                            | # I preemptively set certain registers a function early to avoid bubbles. 
+                            | # This ncopy program assesses 4 indices at once and adds to the count if they are > 0.  
+                            | ##################################################################
+                            | # Do not modify this portion
+                            | # Function prologue.
+                            | # %rdi = src, %rsi = dst, %rdx = len
+0x000:                      | ncopy:
+                            | 
+                            | ##################################################################
+                            | # You can modify this portion
+                            | 	# Loop header
+0x000: 6300                 | 	xorq %rax,%rax		# count = 0;
+0x002: 6222                 | 	andq %rdx,%rdx		# len <= 0?
+0x004: 71a901000000000000   | 	jle Done		# if yes, goto Done:
+0x00d: c0f2fcffffffffffffff | 	iaddq $-4, %rdx		# len = len - 4
+0x017: 72eb00000000000000   | 	jl End			# check for extras, goto End:
+                            | 
+0x020: 50a70000000000000000 | Loop:	mrmovq (%rdi), %r10	# move src[i] to %r10
+0x02a: 50970800000000000000 | 	mrmovq 8(%rdi), %r9	# move src[i+1] to %r9
+0x034: 40a60000000000000000 |     	rmmovq %r10, (%rsi)	# move src[i] to dst[i]
+0x03e: 62aa                 |     	andq %r10, %r10		# src[i] <= 0?
+0x040: 715300000000000000   |     	jle Npos1       	# if yes, goto Npos1:
+0x049: c0f00100000000000000 |     	iaddq $1, %rax      	# count++
+                            | 
+0x053: 40960800000000000000 | Npos1:	rmmovq %r9, 8(%rsi)	# move src[i+1] to dst[i+1]
+0x05d: 6299                 | 	andq %r9, %r9		# src[i+1] <= 0?
+0x05f: 717200000000000000   | 	jle Npos2		# if yes, goto Npos2:
+0x068: c0f00100000000000000 | 	iaddq $1, %rax		# count++
+                            | 
+0x072: 50a71000000000000000 | Npos2:	mrmovq 16(%rdi), %r10	# move src[i+2] to %r10
+0x07c: 50971800000000000000 | 	mrmovq 24(%rdi), %r9	# move src[i+3] to %r9
+0x086: 40a61000000000000000 | 	rmmovq %r10, 16(%rsi)	# move src[i+2] to dst[i+2]
+0x090: 62aa                 | 	andq %r10, %r10		# src[i+2] <= 0?
+0x092: 71a500000000000000   | 	jle Npos3:		# if yes, goto Npos3:
+0x09b: c0f00100000000000000 | 	iaddq $1, %rax		# count++
+                            | 
+0x0a5: 40961800000000000000 | Npos3:	rmmovq %r9, 24(%rsi)	# move src[i+3] to dst[i+3]
+0x0af: 6299                 | 	andq %r9, %r9		# src[i+3] <= 0?
+0x0b1: 71c400000000000000   | 	jle Unroll		# if yes, goto Unroll:
+0x0ba: c0f00100000000000000 | 	iaddq $1, %rax		# count++
+                            | 
+0x0c4: c0f72000000000000000 | Unroll:	iaddq $32, %rdi		# begin unrolling at src[i+4]
+0x0ce: c0f62000000000000000 | 	iaddq $32, %rsi		# begin unrolling at dst[i+4]
+0x0d8: c0f2fcffffffffffffff | 	iaddq $-4, %rdx		# len = len - 4
+0x0e2: 752000000000000000   | 	jge Loop		# if extras remain, repeat Loop
+                            | 
+0x0eb: c0f20400000000000000 | End:	iaddq $4, %rdx		# return len to correct value
+                            | 
+0x0f5: c0f2ffffffffffffffff | Extra1: iaddq $-1, %rdx         # len = len - 1
+0x0ff: 72a901000000000000   |         jl Done                 # if no extras, goto Done:
+0x108: 50a70000000000000000 |         mrmovq (%rdi), %r10     # move src[i] to %r10
+0x112: 50b70800000000000000 | 	mrmovq 8(%rdi), %r11    # move src[i+1] to %r11
+0x11c: 40a60000000000000000 | 	rmmovq %r10, (%rsi)     # move src[i] to dst[i]
+0x126: 62aa                 |         andq %r10, %r10         # src[i] <= 0?
+0x128: 713b01000000000000   |         jle Extra2              # if yes, goto Extra2:
+0x131: c0f00100000000000000 |         iaddq $1, %rax          # count++
+                            | 
+0x13b: c0f2ffffffffffffffff | Extra2:	iaddq $-1, %rdx		# len = len - 1
+0x145: 72a901000000000000   | 	jl Done			# if no extras, goto Done: 
+0x14e: 40b60800000000000000 | 	rmmovq %r11, 8(%rsi)	# move src[i+1] to dst[i+1]
+0x158: 62bb                 | 	andq %r11, %r11		# src[i+1] <= 0?
+0x15a: 716d01000000000000   | 	jle Extra3		# if yes, goto Extra3:
+0x163: c0f00100000000000000 | 	iaddq $1, %rax		# count++
+                            | 
+0x16d: c0f2ffffffffffffffff | Extra3:	iaddq $-1, %rdx		# len = len - 1
+0x177: 72a901000000000000   | 	jl Done			# if no extras, goto Done:
+0x180: 50a71000000000000000 | 	mrmovq 16(%rdi), %r10	# move src[i+2] to %r10
+0x18a: 40a61000000000000000 | 	rmmovq %r10, 16(%rsi)	# move src[i+2] to dst[i+1]
+0x194: 62aa                 | 	andq %r10, %r10		# src[i+2] <= 0?
+0x196: 71a901000000000000   | 	jle Done		# if yes, goto Done:
+0x19f: c0f00100000000000000 | 	iaddq $1, %rax		# count++
+                            | 
+                            | ##################################################################
+                            | # Do not modify the following section of code
+                            | # Function epilogue.
+0x1a9:                      | Done:
+0x1a9: 90                   | 	ret
+                            | ##################################################################
+                            | # Keep the following label at the end of your function
+0x1aa:                      | End:
+                            | #/* $end ncopy-ys */
